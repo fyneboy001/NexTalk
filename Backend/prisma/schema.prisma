@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String?
+  email     String   @unique
+  password  String? // nullable for OAuth-only users
+  image     String?
+  gender    Gender? // made optional to avoid OAuth insert errors
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ✅ Relation fields added
+  accounts Account[]
+  sessions Session[]
+}
+
+model Chat {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String?
+  participantIds String[] @db.ObjectId
+}
+
+model Message {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  senderId  String        @db.ObjectId
+  chatId    String        @db.ObjectId
+  status    MessageStatus @default(SENT)
+
+  @@index([chatId], map: "chatId_idx")
+  @@index([senderId], map: "senderId_idx")
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([provider, providerAccountId], map: "provider_providerAccountId_idx")
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@index([identifier, token], map: "identifier_token_idx")
+}
