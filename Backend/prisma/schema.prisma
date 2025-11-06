@@ -7,43 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ===== ENUMS =====
+
 enum Gender {
   MALE
   FEMALE
-}
-
-model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String?
-  email     String   @unique
-  password  String? // nullable for OAuth-only users
-  image     String?
-  gender    Gender? // made optional to avoid OAuth insert errors
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // ✅ Relation fields added
-  accounts Account[]
-  sessions Session[]
-}
-
-model Chat {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  name           String?
-  participantIds String[] @db.ObjectId
-}
-
-model Message {
-  id        String        @id @default(auto()) @map("_id") @db.ObjectId
-  content   String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  senderId  String        @db.ObjectId
-  chatId    String        @db.ObjectId
-  status    MessageStatus @default(SENT)
-
-  @@index([chatId], map: "chatId_idx")
-  @@index([senderId], map: "senderId_idx")
+  OTHER
 }
 
 enum MessageStatus {
@@ -52,23 +21,76 @@ enum MessageStatus {
   READ
 }
 
+// ===== USER MODEL =====
+
+model User {
+  id        String      @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  email     String      @unique
+  password  String?     // Optional for OAuth users
+  image     String?     // ✅ ADDED: For profile pictures
+  gender    Gender?
+  messages  Message[]   @relation("UserMessages")
+  accounts  Account[]
+  sessions  Session[]
+  createdAt DateTime    @default(now()) // ✅ ADDED: Track user creation
+  updatedAt DateTime    @updatedAt      // ✅ ADDED: Track updates
+}
+
+// ===== CHAT MODEL =====
+// Each Chat represents a conversation between two (or more) users
+
+model Chat {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  userIds     String[]   @db.ObjectId
+  messages    Message[]
+  isGroupChat Boolean    @default(false) // ✅ ADDED: To distinguish group chats
+  groupName   String?                    // ✅ ADDED: For group chat names
+  groupImage  String?                    // ✅ ADDED: For group chat images
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt      // ✅ ADDED: Track last activity
+}
+
+// ===== MESSAGE MODEL =====
+// Each Message belongs to a Chat and has one sender
+
+model Message {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  content   String
+  sender    User          @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade) // ✅ ADDED: onDelete
+  senderId  String        @db.ObjectId
+  chat      Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade) // ✅ ADDED: onDelete
+  chatId    String        @db.ObjectId
+  status    MessageStatus @default(SENT)
+  isEdited  Boolean       @default(false) // ✅ ADDED: Track if message was edited
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt      // ✅ ADDED: Track edits
+
+  @@index([chatId])      // ✅ ADDED: Index for faster message queries
+  @@index([senderId])    // ✅ ADDED: Index for faster sender queries
+}
+
+// ===== ACCOUNT MODEL (NextAuth) =====
+
 model Account {
   id                String  @id @default(auto()) @map("_id") @db.ObjectId
   userId            String  @db.ObjectId
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.String // ✅ ADDED: @db.String for large tokens
+  access_token      String? @db.String // ✅ ADDED: @db.String for large tokens
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.String // ✅ ADDED: @db.String for large tokens
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([provider, providerAccountId], map: "provider_providerAccountId_idx")
+  @@unique([provider, providerAccountId]) // ✅ CHANGED: Use @@unique instead of @@index
 }
+
+// ===== SESSION MODEL (NextAuth) =====
 
 model Session {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -76,7 +98,11 @@ model Session {
   userId       String   @db.ObjectId
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId]) // ✅ ADDED: Index for faster user session lookups
 }
+
+// ===== VERIFICATION TOKEN MODEL (NextAuth) =====
 
 model VerificationToken {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
@@ -84,5 +110,5 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
 
-  @@index([identifier, token], map: "identifier_token_idx")
+  @@unique([identifier, token]) // ✅ CHANGED: Use @@unique instead of @@index
 }

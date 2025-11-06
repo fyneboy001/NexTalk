@@ -3,9 +3,29 @@
 import Image from "next/image";
 import { FaPaperPlane, FaPlus, FaPhoneAlt, FaVideo } from "react-icons/fa";
 import { FiSearch } from "react-icons/fi";
+import React, { useState } from "react";
+import type { Message } from "../app/types/chat";
+
+type User = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+};
+
+type UserLayoutProps = {
+  contacts: User[];
+  messages: Message[];
+  activeChat: User | null;
+  setActiveChat: React.Dispatch<React.SetStateAction<User | null>>;
+  inputMessage: string;
+  setInputMessage: React.Dispatch<React.SetStateAction<string>>;
+  handleSendMessage: () => void;
+  sending: boolean;
+  currentUser: User | null;
+};
 
 export default function UserLayout({
-  session,
   contacts,
   messages,
   activeChat,
@@ -13,14 +33,42 @@ export default function UserLayout({
   inputMessage,
   setInputMessage,
   handleSendMessage,
-}: any) {
-  const user = session?.user;
+  sending,
+  currentUser,
+}: UserLayoutProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Filter contacts based on search query
+  const filteredContacts = contacts.filter((contact) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      contact.name?.toLowerCase().includes(query) ||
+      contact.email?.toLowerCase().includes(query)
+    );
+  });
+
+  if (!currentUser) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-[#F8F6FF] to-[#F3E8FF]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7E22CE] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading user...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full flex bg-gradient-to-br from-[#F8F6FF] to-[#F3E8FF]">
-      {/* Sidebar */}
+      {/* ===== Sidebar ===== */}
       <aside className="w-1/4 bg-gradient-to-b from-[#6D28D9] to-[#9333EA] text-white flex flex-col shadow-lg">
-        {/* Top Section with User Info */}
         <div className="p-4 flex items-center justify-between border-b border-white/20">
           <h1 className="text-xl font-bold tracking-wide">NexTalk</h1>
           <button className="bg-white text-[#7E22CE] rounded-full p-2 hover:bg-purple-100 transition">
@@ -28,80 +76,92 @@ export default function UserLayout({
           </button>
         </div>
 
-        {/* Signed-in User */}
+        {/* Signed-in User - Now shows data from database */}
         <div className="flex items-center p-4 border-b border-white/10 bg-white/10 backdrop-blur-md">
           <Image
-            src={user?.image || "/default-avatar.png"}
-            alt={user?.name || "User"}
+            src={currentUser.image || "/default-avatar.png"}
+            alt={currentUser.name || "User"}
             width={45}
             height={45}
             className="rounded-full border-2 border-white/30"
+            unoptimized
           />
-          <div className="ml-3">
-            <h3 className="font-semibold text-sm">{user?.name}</h3>
-            <p className="text-xs text-purple-100">Online</p>
+          <div className="ml-3 flex-1 min-w-0">
+            <h3 className="font-semibold text-sm truncate">
+              {currentUser.name || "You"}
+            </h3>
+            <p className="text-xs text-purple-100 truncate">
+              {currentUser.email || "Online"}
+            </p>
           </div>
         </div>
 
-        {/* Search */}
+        {/* ===== Search ===== */}
         <div className="p-3">
           <div className="flex items-center bg-white/20 rounded-lg px-3 py-2">
             <FiSearch className="text-white opacity-80" />
             <input
-              placeholder="Search..."
-              className="bg-transparent outline-none text-white ml-2 w-full placeholder-white/70"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search contacts..."
+              className="bg-transparent outline-none text-white ml-2 w-full placeholder-white/70 text-sm"
             />
           </div>
         </div>
 
-        {/* Contacts List */}
+        {/* ===== Contacts ===== */}
         <div className="flex-1 overflow-y-auto">
-          {contacts.length > 0 ? (
-            contacts.map((user: any) => (
+          {filteredContacts.length > 0 ? (
+            filteredContacts.map((contact) => (
               <div
-                key={user.id}
-                onClick={() => setActiveChat(user)}
+                key={contact.id}
+                onClick={() => setActiveChat(contact)}
                 className={`flex items-center p-3 cursor-pointer hover:bg-white/10 transition ${
-                  activeChat?.id === user.id ? "bg-white/15" : ""
+                  activeChat?.id === contact.id ? "bg-white/15" : ""
                 }`}
               >
                 <Image
-                  src={user.image || "/default-avatar.png"}
-                  alt={user.name}
+                  src={contact.image || "/default-avatar.png"}
+                  alt={contact.name || "User"}
                   width={40}
                   height={40}
                   className="rounded-full border border-white/20"
+                  unoptimized
                 />
-                <div className="ml-3">
-                  <h3 className="font-semibold text-sm">{user.name}</h3>
-                  <p className="text-xs text-purple-100">{user.email}</p>
+                <div className="ml-3 flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm truncate">
+                    {contact.name || "Unknown User"}
+                  </h3>
+                  <p className="text-xs text-purple-100 truncate">
+                    {contact.email || ""}
+                  </p>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-purple-100 text-center mt-6">
-              No contacts found
+            <p className="text-purple-100 text-center mt-6 px-4 text-sm">
+              {searchQuery ? "No contacts found" : "No contacts available"}
             </p>
           )}
         </div>
       </aside>
 
-      {/* Chat Section */}
+      {/* ===== Chat Section ===== */}
       <section className="flex-1 flex flex-col border-x border-gray-200/40">
-        {/* Chat Header */}
         <header className="flex items-center justify-between p-4 border-b bg-white/90 backdrop-blur-sm">
           {activeChat ? (
             <div className="flex items-center gap-3">
               <Image
                 src={activeChat.image || "/default-avatar.png"}
-                alt={activeChat.name}
+                alt={activeChat.name || "Chat user"}
                 width={45}
                 height={45}
                 className="rounded-full"
+                unoptimized
               />
               <div>
                 <h2 className="font-semibold text-gray-800">
-                  {activeChat.name}
+                  {activeChat.name || "Unknown User"}
                 </h2>
                 <p className="text-xs text-[#7E22CE]">Online</p>
               </div>
@@ -110,52 +170,86 @@ export default function UserLayout({
             <p className="text-gray-500">Select a user to start chatting</p>
           )}
           <div className="flex gap-3 text-[#7E22CE]">
-            <FaPhoneAlt className="cursor-pointer hover:text-[#9333EA]" />
-            <FaVideo className="cursor-pointer hover:text-[#9333EA]" />
+            <FaPhoneAlt className="cursor-pointer hover:text-[#9333EA] transition" />
+            <FaVideo className="cursor-pointer hover:text-[#9333EA] transition" />
           </div>
         </header>
 
-        {/* Messages */}
+        {/* ===== Messages ===== */}
         <div className="flex-1 p-4 overflow-y-auto bg-gradient-to-b from-[#F8F6FF] to-[#EDE9FE] space-y-3">
-          {activeChat &&
-            messages
-              .filter(
-                (msg: any) =>
-                  (msg.sender === session?.user?.name &&
-                    msg.receiver === activeChat.email) ||
-                  (msg.receiver === session?.user?.email &&
-                    msg.sender === activeChat.name)
-              )
-              .map((msg: any, i: number) => (
-                <div
-                  key={i}
-                  className={`max-w-xs p-3 rounded-2xl shadow-sm ${
-                    msg.sender === session?.user?.name
-                      ? "bg-gradient-to-r from-[#a071c9] to-[#9333EA] text-white ml-auto"
-                      : "bg-white text-gray-800 border border-gray-100"
-                  }`}
-                >
-                  <p className="text-sm">{msg.text}</p>
-                  <p className="text-[10px] text-gray-300 mt-1">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </p>
-                </div>
-              ))}
+          {activeChat ? (
+            messages.length > 0 ? (
+              messages.map((msg) => {
+                const isSentByMe = msg.senderId === currentUser.id;
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex ${
+                      isSentByMe ? "justify-end" : "justify-start"
+                    }`}
+                  >
+                    <div
+                      className={`max-w-xs p-3 rounded-2xl shadow-sm ${
+                        isSentByMe
+                          ? "bg-gradient-to-r from-[#a071c9] to-[#9333EA] text-white"
+                          : "bg-white text-gray-800 border border-gray-100"
+                      }`}
+                    >
+                      <p className="text-sm break-words">{msg.content}</p>
+                      <p
+                        className={`text-[10px] mt-1 text-right ${
+                          isSentByMe ? "text-purple-200" : "text-gray-400"
+                        }`}
+                      >
+                        {msg.createdAt
+                          ? new Date(msg.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="text-6xl mb-4">👋</div>
+                <p className="text-gray-400">No messages yet.</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Say hi to start the conversation!
+                </p>
+              </div>
+            )
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="text-6xl mb-4">💬</div>
+              <p className="text-gray-400 text-lg font-medium">
+                Select a user to start chatting
+              </p>
+              <p className="text-gray-400 text-sm mt-1">
+                Choose a contact from the sidebar to begin
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Message Input */}
+        {/* ===== Message Input ===== */}
         {activeChat && (
           <footer className="p-4 bg-white border-t flex items-center gap-3">
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={onKeyDown}
               placeholder="Type your message..."
-              className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-[#7E22CE] outline-none"
+              disabled={sending}
+              className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-[#7E22CE] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleSendMessage}
-              className="bg-gradient-to-r from-[#caa7e9] to-[#71449b] text-white rounded-full p-3 hover:opacity-90 transition"
+              disabled={sending || !inputMessage.trim()}
+              className="bg-gradient-to-r from-[#caa7e9] to-[#71449b] text-white rounded-full p-3 hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaPaperPlane size={18} />
             </button>
@@ -163,35 +257,51 @@ export default function UserLayout({
         )}
       </section>
 
-      {/* Profile Section */}
+      {/* ===== Profile Section ===== */}
       <aside className="w-1/4 bg-white border-l border-gray-200 flex flex-col items-center p-6">
         {activeChat ? (
           <>
             <Image
               src={activeChat.image || "/default-avatar.png"}
-              alt={activeChat.name}
+              alt={activeChat.name || "Chat user"}
               width={100}
               height={100}
               className="rounded-full border-4 border-[#E9D5FF]"
+              unoptimized
             />
             <h3 className="mt-3 text-lg font-semibold text-gray-800">
-              {activeChat.name}
+              {activeChat.name || "Unknown User"}
             </h3>
-            <p className="text-sm text-gray-500">{activeChat.email}</p>
+            <p className="text-sm text-gray-500 break-all text-center">
+              {activeChat.email || "No email"}
+            </p>
             <div className="mt-6 w-full">
-              <h4 className="font-semibold text-gray-700 mb-2">Media</h4>
-              <div className="flex gap-2">
-                {[...Array(4)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-12 h-12 rounded-md bg-[#F3E8FF] flex-shrink-0"
-                  />
-                ))}
+              <div className="border-t pt-4">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                  User Info
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-500">Status:</span>
+                    <span className="ml-2 text-green-600 font-medium">
+                      Online
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">User ID:</span>
+                    <span className="ml-2 text-gray-700 font-mono text-xs">
+                      {activeChat.id.slice(0, 8)}...
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </>
         ) : (
-          <p className="text-gray-500 mt-10">Select a user to view profile</p>
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="text-6xl mb-4">👤</div>
+            <p className="text-gray-500">Select a user to view profile</p>
+          </div>
         )}
       </aside>
     </div>

@@ -17,7 +17,6 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          // Call your backend login endpoint
           const res = await fetch("http://localhost:5000/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -29,14 +28,13 @@ export const authOptions: NextAuthOptions = {
 
           if (!res.ok) return null;
 
-          const user = await res.json();
-          // Return the user object for NextAuth session
+          const data = await res.json();
+
           return {
-            id: user.user.id,
-            name: user.user.name,
-            email: user.user.email,
-            // Optional: include token if needed
-            token: user.token,
+            id: data?.user?.id?.toString() || data?.user?._id?.toString(),
+            name: data?.user?.name,
+            email: data?.user?.email,
+            image: data?.user?.image || null,
           };
         } catch (error) {
           console.error("NextAuth authorize error:", error);
@@ -44,61 +42,78 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
+
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID!,
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
     }),
   ],
+
   callbacks: {
-    async signIn({ user, account, profile, email, credentials }) {
-      if (account?.provider == "google") {
-        const isUser = await prisma.user.findFirst({
+    async signIn({ user, account }) {
+      try {
+        let existingUser = await prisma.user.findFirst({
           where: { email: user.email! },
         });
-        if (isUser) return true;
-        await prisma.user.create({
-          data: {
-            name: user.name!,
-            email: user.email!,
-            image: user.image!,
-            password: "",
-          },
-        });
+
+        if (!existingUser) {
+          existingUser = await prisma.user.create({
+            data: {
+              name: user.name!,
+              email: user.email!,
+              image: user.image || "",
+              password: "",
+            },
+          });
+        }
+
+        // ✅ Attach real database ID
+        user.id = existingUser.id;
+        user.image = existingUser.image || user.image;
+
+        return true;
+      } catch (err) {
+        console.error("❌ signIn error:", err);
+        return false;
       }
-      if (account?.provider == "github") {
-        const isUser = await prisma.user.findFirst({
-          where: { email: user.email! },
-        });
-        if (isUser) return true;
-        await prisma.user.create({
-          data: {
-            name: user.name!,
-            email: user.email!,
-            image: user.image!,
-            password: "",
-          },
-        });
-      }
-      return true;
     },
-    // async redirect({ url, baseUrl }) {
-    //   return baseUrl;
-    // },
-    // async session({ session, user, token }) {
-    //   return session;
-    // },
-    // async jwt({ token, user, account, profile, isNewUser }) {
-    //   return token;
-    // },
+
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.email = user.email;
+        token.name = user.name;
+        token.picture = user.image; // ✅ Add image to token
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+        session.user.email = token.email as string;
+        session.user.name = token.name as string;
+        session.user.image = token.picture as string; // ✅ Add image to session
+      }
+      return session;
+    },
   },
+
+  pages: {
+    signIn: "/signin", // ✅ Add custom sign-in page
+    error: "/signin", // ✅ Redirect errors to sign-in
+  },
+
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET, // must be set in frontend .env
+
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);

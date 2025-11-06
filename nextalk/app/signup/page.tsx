@@ -7,6 +7,16 @@ import Image from "next/image";
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub } from "react-icons/fa";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    if ("message" in error) return String(error.message);
+    if ("error" in error) return String(error.error);
+  }
+  return "Something went wrong. Please try again.";
+}
+
 export default function SignUpPage() {
   const router = useRouter();
 
@@ -14,53 +24,135 @@ export default function SignUpPage() {
     name: "",
     email: "",
     password: "",
+    confirmPassword: "", // ✅ ADDED: Password confirmation
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">("error"); // ✅ ADDED: Message type
 
   // ✅ Handle input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Clear message when user starts typing
+    if (message) setMessage("");
   };
 
-  // ✅ Handle manual signup
+  // ✅ Form validation
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      setMessage("Please enter your full name");
+      setMessageType("error");
+      return false;
+    }
+
+    if (!formData.email.trim()) {
+      setMessage("Please enter your email address");
+      setMessageType("error");
+      return false;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setMessage("Please enter a valid email address");
+      setMessageType("error");
+      return false;
+    }
+
+    if (!formData.password) {
+      setMessage("Please enter a password");
+      setMessageType("error");
+      return false;
+    }
+
+    if (formData.password.length < 6) {
+      setMessage("Password must be at least 6 characters long");
+      setMessageType("error");
+      return false;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setMessage("Passwords do not match");
+      setMessageType("error");
+      return false;
+    }
+
+    return true;
+  };
+
+  // ✅ Handle manual signup with auto-login and redirect
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form
+    if (!validateForm()) return;
+
     setLoading(true);
     setMessage("");
 
     try {
+      // Step 1: Register the user
       const res = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Signup failed");
 
-      setMessage("✅ Account created successfully! Logging you in...");
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Signup failed");
+      }
 
+      console.log("✅ Registration successful:", data);
+      setMessage("Account created successfully! Logging you in...");
+      setMessageType("success");
+
+      // Step 2: Automatically sign in the user
       const loginResult = await signIn("credentials", {
-        redirect: false,
+        redirect: false, // Don't auto-redirect, we'll handle it
         email: formData.email,
         password: formData.password,
       });
 
-      if (loginResult?.error) throw new Error(loginResult.error);
+      if (loginResult?.error) {
+        console.error("❌ Auto-login error:", loginResult.error);
+        throw new Error(
+          "Account created but login failed. Please sign in manually."
+        );
+      }
 
-      router.push("/chat");
-    } catch (error: any) {
+      if (loginResult?.ok) {
+        console.log("✅ Auto-login successful");
+        setMessage("Success! Redirecting to chat...");
+        setMessageType("success");
+
+        // Step 3: Redirect to chat page
+        setTimeout(() => {
+          router.push("/chat");
+        }, 500); // Small delay to show success message
+      }
+    } catch (error: unknown) {
       console.error("❌ Signup error:", error);
-      setMessage(error.message || "Something went wrong");
+      setMessage(getErrorMessage(error));
+      setMessageType("error");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ OAuth
-  const handleGoogleSignup = () => signIn("google", { callbackUrl: "/chat" });
-  const handleGithubSignup = () => signIn("github", { callbackUrl: "/chat" });
+  // ✅ OAuth handlers with chat redirect
+  const handleGoogleSignup = () => {
+    signIn("google", { callbackUrl: "/chat" });
+  };
+
+  const handleGithubSignup = () => {
+    signIn("github", { callbackUrl: "/chat" });
+  };
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white">
@@ -98,8 +190,8 @@ export default function SignUpPage() {
                 placeholder="Enter your name"
                 value={formData.name}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7A00] outline-none"
+                disabled={loading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7A00] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -113,8 +205,8 @@ export default function SignUpPage() {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7A00] outline-none"
+                disabled={loading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7A00] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -125,34 +217,76 @@ export default function SignUpPage() {
               <input
                 type="password"
                 name="password"
-                placeholder="Create a password"
+                placeholder="Create a password (min. 6 characters)"
                 value={formData.password}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7A00] outline-none"
+                disabled={loading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7A00] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              />
+            </div>
+
+            {/* ✅ ADDED: Confirm Password Field */}
+            <div>
+              <label className="block text-gray-700 font-medium mb-1">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm your password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                disabled={loading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF7A00] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-[#FF7A00] text-white font-semibold rounded-lg hover:bg-[#e96c00] transition disabled:opacity-50"
+              className="w-full py-2.5 bg-[#FF7A00] text-white font-semibold rounded-lg hover:bg-[#e96c00] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? "Creating Account..." : "Sign Up"}
+              {loading ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>Creating Account...</span>
+                </>
+              ) : (
+                "Sign Up"
+              )}
             </button>
           </form>
 
-          {/* Message */}
+          {/* ✅ IMPROVED: Message with better styling */}
           {message && (
-            <p
-              className={`text-center text-sm mt-3 ${
-                message.includes("✅") || message.includes("success")
-                  ? "text-green-600"
-                  : "text-red-500"
+            <div
+              className={`mt-4 p-3 rounded-lg text-sm text-center ${
+                messageType === "success"
+                  ? "bg-green-50 text-green-700 border border-green-200"
+                  : "bg-red-50 text-red-700 border border-red-200"
               }`}
             >
               {message}
-            </p>
+            </div>
           )}
 
           {/* Divider */}
@@ -167,7 +301,8 @@ export default function SignUpPage() {
             <button
               type="button"
               onClick={handleGoogleSignup}
-              className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2 hover:bg-gray-100 transition"
+              disabled={loading}
+              className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FcGoogle size={22} />
               <span className="font-medium text-gray-700">
@@ -178,7 +313,8 @@ export default function SignUpPage() {
             <button
               type="button"
               onClick={handleGithubSignup}
-              className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2 hover:bg-gray-100 transition"
+              disabled={loading}
+              className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-2 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaGithub size={22} className="text-gray-800" />
               <span className="font-medium text-gray-700">
@@ -192,7 +328,8 @@ export default function SignUpPage() {
             Already have an account?{" "}
             <button
               onClick={() => router.push("/signin")}
-              className="text-[#FF7A00] font-semibold hover:underline"
+              disabled={loading}
+              className="text-[#FF7A00] font-semibold hover:underline disabled:opacity-50"
             >
               Sign In
             </button>
