@@ -53,7 +53,7 @@ export default function ChatPage() {
       image: session.user.image || null,
     };
     setCurrentUser(normalizedUser);
-    console.log("✅ Current user set from session:", normalizedUser);
+    console.log("Current user set from session:", normalizedUser);
   }, [session, status]);
 
   // Initialize socket
@@ -64,19 +64,19 @@ export default function ChatPage() {
     socket = newSocket;
 
     newSocket.on("connect", () => {
-      console.log("✅ Connected to socket:", newSocket.id);
+      console.log("Connected to socket:", newSocket.id);
       newSocket.emit("join", { userId: currentUser.id });
     });
 
     newSocket.on("newMessage", (msg: Message) => {
-      console.log("📨 New message received:", msg);
+      console.log("New message received:", msg);
       setMessages((prev) =>
         prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
       );
     });
 
     return () => {
-      console.log("🔌 Disconnecting socket");
+      console.log("Disconnecting socket");
       newSocket.disconnect();
       socket = null;
     };
@@ -98,9 +98,9 @@ export default function ChatPage() {
         const users: User[] = await res.json();
         const filteredContacts = users.filter((u) => u.id !== currentUser.id);
         setContacts(filteredContacts);
-        console.log("✅ Contacts loaded:", filteredContacts.length);
+        console.log("Contacts loaded:", filteredContacts.length);
       } catch (err) {
-        console.error("❌ Error fetching contacts:", err);
+        console.error("Error fetching contacts:", err);
       }
     };
 
@@ -113,7 +113,7 @@ export default function ChatPage() {
       if (!activeChat || !currentUser) return;
 
       try {
-        console.log(`💬 Fetching conversation with ${activeChat.name}...`);
+        console.log(`Fetching conversation with ${activeChat.name}...`);
         const res = await fetch(
           `${API_BASE}/api/messages?userAId=${currentUser.id}&userBId=${activeChat.id}`
         );
@@ -133,9 +133,9 @@ export default function ChatPage() {
           createdAt: m.createdAt,
         }));
         setMessages(mapped);
-        console.log("✅ Messages loaded:", mapped.length);
+        console.log("Messages loaded:", mapped.length);
       } catch (err) {
-        console.error("❌ Error fetching conversation:", err);
+        console.error("Error fetching conversation:", err);
       }
     };
 
@@ -166,7 +166,7 @@ export default function ChatPage() {
       }
 
       const saved = await res.json();
-      console.log("✅ Message saved:", saved);
+      console.log("Message saved:", saved);
 
       // Emit to socket
       socket?.emit("chat message", saved);
@@ -184,7 +184,7 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, newMessage]);
       setInputMessage("");
     } catch (err) {
-      console.error("❌ Send message error:", err);
+      console.error("Send message error:", err);
       alert("Failed to send message. Please try again.");
     } finally {
       setSending(false);

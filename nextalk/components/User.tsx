@@ -1,9 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { FaPaperPlane, FaPlus, FaPhoneAlt, FaVideo } from "react-icons/fa";
+import {
+  FaPaperPlane,
+  FaPlus,
+  FaPhoneAlt,
+  FaVideo,
+  FaSignOutAlt,
+} from "react-icons/fa";
 import { FiSearch } from "react-icons/fi";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { signOut } from "next-auth/react";
 import type { Message } from "../app/types/chat";
 
 type User = {
@@ -23,6 +30,7 @@ type UserLayoutProps = {
   handleSendMessage: () => void;
   sending: boolean;
   currentUser: User | null;
+  loadingMessages?: boolean;
 };
 
 export default function UserLayout({
@@ -35,11 +43,18 @@ export default function UserLayout({
   handleSendMessage,
   sending,
   currentUser,
+  loadingMessages = false,
 }: UserLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -76,7 +91,7 @@ export default function UserLayout({
           </button>
         </div>
 
-        {/* Signed-in User - Now shows data from database */}
+        {/* Signed-in User */}
         <div className="flex items-center p-4 border-b border-white/10 bg-white/10 backdrop-blur-md">
           <Image
             src={currentUser.image || "/default-avatar.png"}
@@ -96,7 +111,7 @@ export default function UserLayout({
           </div>
         </div>
 
-        {/* ===== Search ===== */}
+        {/* Search */}
         <div className="p-3">
           <div className="flex items-center bg-white/20 rounded-lg px-3 py-2">
             <FiSearch className="text-white opacity-80" />
@@ -109,7 +124,7 @@ export default function UserLayout({
           </div>
         </div>
 
-        {/* ===== Contacts ===== */}
+        {/* Contacts */}
         <div className="flex-1 overflow-y-auto">
           {filteredContacts.length > 0 ? (
             filteredContacts.map((contact) => (
@@ -178,40 +193,48 @@ export default function UserLayout({
         {/* ===== Messages ===== */}
         <div className="flex-1 p-4 overflow-y-auto bg-gradient-to-b from-[#F8F6FF] to-[#EDE9FE] space-y-3">
           {activeChat ? (
-            messages.length > 0 ? (
-              messages.map((msg) => {
-                const isSentByMe = msg.senderId === currentUser.id;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${
-                      isSentByMe ? "justify-end" : "justify-start"
-                    }`}
-                  >
+            loadingMessages ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#7E22CE] mb-3"></div>
+                <p className="text-gray-400 text-sm">Loading messages...</p>
+              </div>
+            ) : messages.length > 0 ? (
+              <>
+                {messages.map((msg) => {
+                  const isSentByMe = msg.senderId === currentUser.id;
+                  return (
                     <div
-                      className={`max-w-xs p-3 rounded-2xl shadow-sm ${
-                        isSentByMe
-                          ? "bg-gradient-to-r from-[#a071c9] to-[#9333EA] text-white"
-                          : "bg-white text-gray-800 border border-gray-100"
+                      key={msg.id}
+                      className={`flex ${
+                        isSentByMe ? "justify-end" : "justify-start"
                       }`}
                     >
-                      <p className="text-sm break-words">{msg.content}</p>
-                      <p
-                        className={`text-[10px] mt-1 text-right ${
-                          isSentByMe ? "text-purple-200" : "text-gray-400"
+                      <div
+                        className={`max-w-xs p-3 rounded-2xl shadow-sm ${
+                          isSentByMe
+                            ? "bg-gradient-to-r from-[#a071c9] to-[#9333EA] text-white"
+                            : "bg-white text-gray-800 border border-gray-100"
                         }`}
                       >
-                        {msg.createdAt
-                          ? new Date(msg.createdAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : ""}
-                      </p>
+                        <p className="text-sm break-words">{msg.content}</p>
+                        <p
+                          className={`text-[10px] mt-1 text-right ${
+                            isSentByMe ? "text-purple-200" : "text-gray-400"
+                          }`}
+                        >
+                          {msg.createdAt
+                            ? new Date(msg.createdAt).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : ""}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="text-6xl mb-4">👋</div>
@@ -243,15 +266,19 @@ export default function UserLayout({
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Type your message..."
-              disabled={sending}
+              disabled={sending || loadingMessages}
               className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-[#7E22CE] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleSendMessage}
-              disabled={sending || !inputMessage.trim()}
+              disabled={sending || !inputMessage.trim() || loadingMessages}
               className="bg-gradient-to-r from-[#caa7e9] to-[#71449b] text-white rounded-full p-3 hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <FaPaperPlane size={18} />
+              {sending ? (
+                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
+              ) : (
+                <FaPaperPlane size={18} />
+              )}
             </button>
           </footer>
         )}

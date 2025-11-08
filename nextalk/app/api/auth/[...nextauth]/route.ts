@@ -30,8 +30,9 @@ export const authOptions: NextAuthOptions = {
 
           const data = await res.json();
 
+          // Return user object with all required fields
           return {
-            id: data?.user?.id?.toString() || data?.user?._id?.toString(),
+            id: data?.user?.id?.toString(),
             name: data?.user?.name,
             email: data?.user?.email,
             image: data?.user?.image || null,
@@ -55,65 +56,107 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       try {
+        console.log("SignIn callback triggered");
+        console.log("User:", user);
+        console.log("Account:", account);
+
+        // Find or create user in database
         let existingUser = await prisma.user.findFirst({
           where: { email: user.email! },
         });
 
         if (!existingUser) {
+          console.log("Creating new user in database");
           existingUser = await prisma.user.create({
             data: {
-              name: user.name!,
+              name: user.name || "User",
               email: user.email!,
               image: user.image || "",
-              password: "",
+              password: "", // Empty for OAuth users
             },
           });
+        } else {
+          console.log("User exists in database:", existingUser.id);
+
+          // Update user image if it changed (for OAuth)
+          if (user.image && user.image !== existingUser.image) {
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { image: user.image },
+            });
+          }
         }
 
-        // ✅ Attach real database ID
         user.id = existingUser.id;
+        user.name = existingUser.name;
+        user.email = existingUser.email;
         user.image = existingUser.image || user.image;
 
+        console.log("SignIn successful for user:", user.id);
         return true;
       } catch (err) {
-        console.error("❌ signIn error:", err);
+        console.error("signIn callback error:", err);
         return false;
       }
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      console.log("JWT callback triggered");
+
+      // Initial sign in
       if (user) {
+        console.log("Adding user to token:", user.id);
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.picture = user.image; // ✅ Add image to token
+        token.picture = user.image;
       }
+
+      // Handle session updates
+      if (trigger === "update" && session) {
+        token.name = session.name;
+        token.picture = session.image;
+      }
+
+      console.log("Token state:", { id: token.id, email: token.email });
       return token;
     },
 
     async session({ session, token }) {
-      if (session.user) {
+      console.log("Session callback triggered");
+
+      if (session.user && token) {
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string;
-        session.user.image = token.picture as string; // ✅ Add image to session
+        session.user.image = token.picture as string;
       }
+
+      console.log("Session state:", {
+        id: session.user?.id,
+        email: session.user?.email,
+        name: session.user?.name,
+      });
+
       return session;
     },
   },
 
   pages: {
-    signIn: "/signin", // ✅ Add custom sign-in page
-    error: "/signin", // ✅ Redirect errors to sign-in
+    signIn: "/signin",
+    error: "/signin",
   },
 
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
 
   secret: process.env.NEXTAUTH_SECRET,
+
+  debug: process.env.NODE_ENV === "development", // Enable debug logs in development
 };
 
 const handler = NextAuth(authOptions);

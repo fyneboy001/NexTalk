@@ -38,13 +38,13 @@ const io = new Server(server, {
 const connectedUsers = new Map();
 
 io.on("connection", (socket) => {
-  console.log("✅ New user connected:", socket.id);
+  console.log("New user connected:", socket.id);
 
   // User joins with their userId
   socket.on("join", ({ userId }) => {
     if (userId) {
       connectedUsers.set(userId, socket.id);
-      console.log(`👤 User ${userId} joined with socket ${socket.id}`);
+      console.log(`User ${userId} joined with socket ${socket.id}`);
     }
   });
 
@@ -54,7 +54,7 @@ io.on("connection", (socket) => {
       const { senderId, receiverId, content } = data;
 
       if (!senderId || !receiverId || !content) {
-        console.error("❌ Missing required fields:", {
+        console.error("Missing required fields:", {
           senderId,
           receiverId,
           content,
@@ -72,21 +72,21 @@ io.on("connection", (socket) => {
         },
       });
 
-      console.log("✅ Message saved:", newMessage.id);
+      console.log("Message saved:", newMessage.id);
 
       // Emit to specific receiver if online, otherwise broadcast to all
       const receiverSocketId = connectedUsers.get(receiverId);
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("newMessage", newMessage);
-        console.log(`📤 Message sent to receiver ${receiverId}`);
+        console.log(`Message sent to receiver ${receiverId}`);
       } else {
-        console.log(`📭 Receiver ${receiverId} is offline`);
+        console.log(`Receiver ${receiverId} is offline`);
       }
 
       // Also emit to sender for confirmation
       socket.emit("newMessage", newMessage);
     } catch (err) {
-      console.error("❌ Socket message save error:", err);
+      console.error("Socket message save error:", err);
       socket.emit("error", { message: "Failed to send message" });
     }
   });
@@ -96,19 +96,15 @@ io.on("connection", (socket) => {
     for (const [userId, socketId] of connectedUsers.entries()) {
       if (socketId === socket.id) {
         connectedUsers.delete(userId);
-        console.log(`👋 User ${userId} disconnected`);
+        console.log(`User ${userId} disconnected`);
         break;
       }
     }
-    console.log("❌ Socket disconnected:", socket.id);
+    console.log("Socket disconnected:", socket.id);
   });
 });
 
 // ===== HELPER FUNCTIONS =====
-
-/**
- * Get or create a chat between two users
- */
 async function getOrCreateChat(userAId, userBId) {
   try {
     // Ensure IDs are strings
@@ -131,12 +127,12 @@ async function getOrCreateChat(userAId, userBId) {
           userIds: [idA, idB],
         },
       });
-      console.log(`💬 New chat created between ${idA} and ${idB}`);
+      console.log(`New chat created between ${idA} and ${idB}`);
     }
 
     return chat;
   } catch (err) {
-    console.error("❌ Error in getOrCreateChat:", err);
+    console.error("Error in getOrCreateChat:", err);
     throw err;
   }
 }
@@ -144,7 +140,7 @@ async function getOrCreateChat(userAId, userBId) {
 // ===== ROOT ROUTE =====
 app.get("/", (_req, res) => {
   res.json({
-    message: "✅ NexTalk Backend is running!",
+    message: "NexTalk Backend is running!",
     endpoints: {
       auth: {
         register: "POST /api/auth/register",
@@ -214,7 +210,7 @@ app.post("/api/auth/register", async (req, res) => {
         name: name.trim(),
         email: email.toLowerCase(),
         password: hashedPassword,
-        image: "", // ✅ Default empty image
+        image: "",
       },
       select: {
         id: true,
@@ -225,7 +221,7 @@ app.post("/api/auth/register", async (req, res) => {
       },
     });
 
-    console.log("✅ New user registered:", user.email);
+    console.log("New user registered:", user.email);
 
     res.status(201).json({
       message: "User created successfully",
@@ -237,7 +233,7 @@ app.post("/api/auth/register", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Register error:", err);
+    console.error("Register error:", err);
     res.status(500).json({
       error: "Server error",
       message:
@@ -301,7 +297,7 @@ app.post("/api/auth/login", async (req, res) => {
       expiresIn: "7d",
     });
 
-    console.log("✅ User logged in:", user.email);
+    console.log("User logged in:", user.email);
 
     res.json({
       message: "Login successful",
@@ -314,7 +310,7 @@ app.post("/api/auth/login", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ Login error:", err);
+    console.error("Login error:", err);
     res.status(500).json({
       error: "Server error",
       message: "An error occurred while signing in. Please try again.",
@@ -342,10 +338,10 @@ app.get("/api/users", async (_req, res) => {
       },
     });
 
-    console.log(`✅ Fetched ${users.length} users`);
+    console.log(`Fetched ${users.length} users`);
     res.status(200).json(users);
   } catch (err) {
-    console.error("❌ Error fetching users:", err);
+    console.error("Error fetching users:", err);
     res.status(500).json({
       error: "Failed to fetch users",
       message: "Could not retrieve users. Please try again.",
@@ -380,7 +376,7 @@ app.get("/api/users/:id", async (req, res) => {
 
     res.json(user);
   } catch (err) {
-    console.error("❌ Error fetching user:", err);
+    console.error("Error fetching user:", err);
     res.status(500).json({
       error: "Failed to fetch user",
       message: "Could not retrieve user information",
@@ -389,10 +385,6 @@ app.get("/api/users/:id", async (req, res) => {
 });
 
 // ===== MESSAGES ROUTES =====
-
-/**
- * Get messages between two users
- */
 app.get("/api/messages", async (req, res) => {
   const { userAId, userBId } = req.query;
 
@@ -423,7 +415,7 @@ app.get("/api/messages", async (req, res) => {
     // Create new chat if doesn't exist
     if (!chat) {
       console.log(
-        `💬 No existing chat found — creating new one between ${idA} and ${idB}`
+        `No existing chat found — creating new one between ${idA} and ${idB}`
       );
       chat = await prisma.chat.create({
         data: { userIds: [idA, idB] },
@@ -431,10 +423,10 @@ app.get("/api/messages", async (req, res) => {
       });
     }
 
-    console.log(`✅ Fetched ${chat.messages.length} messages`);
+    console.log(`Fetched ${chat.messages.length} messages`);
     res.json(chat.messages || []);
   } catch (err) {
-    console.error("❌ Error fetching messages:", err);
+    console.error("Error fetching messages:", err);
     res.status(500).json({
       error: "Failed to fetch messages",
       message: "Could not retrieve conversation. Please try again.",
@@ -476,14 +468,14 @@ app.post("/api/messages", async (req, res) => {
       },
     });
 
-    console.log("✅ Message created:", message.id);
+    console.log("Message created:", message.id);
 
     // Emit to socket
     io.emit("newMessage", message);
 
     res.status(201).json(message);
   } catch (err) {
-    console.error("❌ Error creating message:", err);
+    console.error("Error creating message:", err);
     res.status(500).json({
       error: "Failed to send message",
       message: "Could not send your message. Please try again.",
@@ -493,7 +485,7 @@ app.post("/api/messages", async (req, res) => {
 
 // ===== ERROR HANDLING MIDDLEWARE =====
 app.use((err, req, res, next) => {
-  console.error("❌ Unhandled error:", err);
+  console.error("Unhandled error:", err);
   res.status(500).json({
     error: "Internal server error",
     message: "Something went wrong on our end",
@@ -510,22 +502,22 @@ app.use((req, res) => {
 
 // ===== START SERVER =====
 server.listen(PORT, () => {
-  console.log(`🚀 Backend running on http://localhost:${PORT}`);
-  console.log(`📡 Socket.IO ready for connections from ${CLIENT_URL}`);
+  console.log(`Backend running on http://localhost:${PORT}`);
+  console.log(`Socket.IO ready for connections from ${CLIENT_URL}`);
   console.log(
-    `🔑 JWT Secret: ${
+    `JWT Secret: ${
       JWT_SECRET === "defaultsecret"
-        ? "⚠️  Using default (not secure!)"
-        : "✅ Custom secret set"
+        ? "Using default (not secure!)"
+        : "Custom secret set"
     }`
   );
 });
 
 // ===== GRACEFUL SHUTDOWN =====
 process.on("SIGTERM", async () => {
-  console.log("👋 SIGTERM received, shutting down gracefully...");
+  console.log("SIGTERM received, shutting down gracefully...");
   server.close(() => {
-    console.log("✅ Server closed");
+    console.log("Server closed");
     prisma.$disconnect();
     process.exit(0);
   });
@@ -534,7 +526,7 @@ process.on("SIGTERM", async () => {
 process.on("SIGINT", async () => {
   console.log("👋 SIGINT received, shutting down gracefully...");
   server.close(() => {
-    console.log("✅ Server closed");
+    console.log("Server closed");
     prisma.$disconnect();
     process.exit(0);
   });
