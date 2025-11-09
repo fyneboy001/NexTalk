@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { io, Socket } from "socket.io-client";
 import UserLayout from "@/components/User";
@@ -15,6 +15,7 @@ type User = {
 
 type BackendMessage = {
   _id: string;
+  id?: string;
   content: string;
   senderId: string;
   chatId: string;
@@ -37,14 +38,34 @@ export default function ChatPage() {
   const [inputMessage, setInputMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
   const SOCKET_URL =
     process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000";
 
+  // Use ref to track if we've already added a message
+  const messageIdsRef = useRef<Set<string>>(new Set());
+
+  // Debug logging for session and current user
+  useEffect(() => {
+    console.log("=== USER STATE DEBUG ===");
+    console.log("Status:", status);
+    console.log("Session exists:", !!session);
+    console.log("Session user:", session?.user);
+    console.log("Current user state:", currentUser);
+    console.log("=======================");
+  }, [session, currentUser, status]);
+
   // Set current user from session
   useEffect(() => {
-    if (status !== "authenticated" || !session?.user) return;
+    if (status !== "authenticated" || !session?.user?.id) {
+      console.log("⏸️ Waiting for authentication...", {
+        status,
+        hasUser: !!session?.user,
+      });
+      return;
+    }
 
     const normalizedUser: User = {
       id: session.user.id,
@@ -52,35 +73,90 @@ export default function ChatPage() {
       email: session.user.email || null,
       image: session.user.image || null,
     };
+
+    console.log("👤 Setting current user from session:", {
+      id: normalizedUser.id,
+      name: normalizedUser.name,
+      email: normalizedUser.email,
+      hasImage: !!normalizedUser.image,
+    });
+
+    // Always update to ensure we have latest session data
     setCurrentUser(normalizedUser);
-    console.log("Current user set from session:", normalizedUser);
-  }, [session, status]);
+  }, [session?.user, status]);
 
-  // Initialize socket
+  // Initialize socket - ONLY ONCE when currentUser is available
   useEffect(() => {
-    if (!currentUser || socket) return;
+    if (!currentUser) return;
+    if (socket?.connected) return; // Don't recreate if already connected
 
-    const newSocket = io(SOCKET_URL, { transports: ["websocket"] });
+    console.log("🔌 Initializing socket connection...");
+    const newSocket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
     socket = newSocket;
 
     newSocket.on("connect", () => {
-      console.log("Connected to socket:", newSocket.id);
+      console.log("✅ Connected to socket:", newSocket.id);
       newSocket.emit("join", { userId: currentUser.id });
     });
 
-    newSocket.on("newMessage", (msg: Message) => {
-      console.log("New message received:", msg);
-      setMessages((prev) =>
-        prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]
-      );
+    newSocket.on("newMessage", (msg: BackendMessage) => {
+      console.log("📨 New message received via socket:", msg);
+
+      const messageId = msg._id || msg.id;
+
+      // Skip if no ID or already have this message
+      if (!messageId || messageIdsRef.current.has(messageId)) {
+        console.log("⏭️ Skipping duplicate message:", messageId);
+        return;
+      }
+
+      // Add to tracked messages
+      messageIdsRef.current.add(messageId);
+
+      const formattedMsg: Message = {
+        id: messageId,
+        content: msg.content,
+        senderId: msg.senderId,
+        receiverId: msg.senderId === currentUser.id ? "" : currentUser.id,
+        chatId: msg.chatId,
+        createdAt: msg.createdAt,
+      };
+
+      // Only add message to state once
+      setMessages((prev) => {
+        // Final check to prevent duplicates in state
+        if (prev.some((m) => m.id === messageId)) {
+          console.log("⏭️ Message already in state:", messageId);
+          return prev;
+        }
+        console.log("✅ Adding new message to state:", messageId);
+        return [...prev, formattedMsg];
+      });
     });
 
+    newSocket.on("disconnect", () => {
+      console.log("🔌 Socket disconnected");
+    });
+
+    newSocket.on("reconnect", () => {
+      console.log("🔄 Socket reconnected");
+      newSocket.emit("join", { userId: currentUser.id });
+    });
+
+    // Cleanup only when component unmounts or user changes
     return () => {
-      console.log("Disconnecting socket");
-      newSocket.disconnect();
-      socket = null;
+      console.log("🧹 Cleaning up socket connection");
+      if (newSocket) {
+        newSocket.disconnect();
+        socket = null;
+      }
     };
-  }, [currentUser, SOCKET_URL]);
+  }, [currentUser?.id, SOCKET_URL]); // Only depend on user ID, not activeChat
 
   // Fetch contacts
   useEffect(() => {
@@ -98,9 +174,9 @@ export default function ChatPage() {
         const users: User[] = await res.json();
         const filteredContacts = users.filter((u) => u.id !== currentUser.id);
         setContacts(filteredContacts);
-        console.log("Contacts loaded:", filteredContacts.length);
+        console.log("✅ Contacts loaded:", filteredContacts.length);
       } catch (err) {
-        console.error("Error fetching contacts:", err);
+        console.error("❌ Error fetching contacts:", err);
       }
     };
 
@@ -113,7 +189,9 @@ export default function ChatPage() {
       if (!activeChat || !currentUser) return;
 
       try {
-        console.log(`Fetching conversation with ${activeChat.name}...`);
+        setLoadingMessages(true);
+        console.log(`💬 Fetching conversation with ${activeChat.name}...`);
+
         const res = await fetch(
           `${API_BASE}/api/messages?userAId=${currentUser.id}&userBId=${activeChat.id}`
         );
@@ -123,36 +201,63 @@ export default function ChatPage() {
         }
 
         const data: BackendMessage[] = await res.json();
-        const mapped: Message[] = data.map((m) => ({
-          id: m._id,
-          content: m.content,
-          senderId: m.senderId,
-          receiverId:
-            m.senderId === currentUser.id ? activeChat.id : currentUser.id,
-          chatId: m.chatId,
-          createdAt: m.createdAt,
-        }));
+        console.log(`✅ Received ${data.length} messages from server`);
+
+        // Clear the message IDs ref for the new chat
+        messageIdsRef.current.clear();
+
+        const mapped: Message[] = data.map((m) => {
+          const messageId = m._id || m.id || "";
+          if (messageId) {
+            messageIdsRef.current.add(messageId); // Track this message
+          }
+
+          return {
+            id: messageId,
+            content: m.content,
+            senderId: m.senderId,
+            receiverId:
+              m.senderId === currentUser.id ? activeChat.id : currentUser.id,
+            chatId: m.chatId,
+            createdAt: m.createdAt,
+          };
+        });
+
         setMessages(mapped);
-        console.log("Messages loaded:", mapped.length);
+        console.log("✅ Messages loaded and displayed:", mapped.length);
       } catch (err) {
-        console.error("Error fetching conversation:", err);
+        console.error("❌ Error fetching conversation:", err);
+        setMessages([]); // Clear messages on error
+      } finally {
+        setLoadingMessages(false);
       }
     };
+
+    // Clear messages when switching chats
+    setMessages([]);
+    messageIdsRef.current.clear();
 
     fetchConversation();
   }, [activeChat, currentUser, API_BASE]);
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !currentUser || !activeChat) return;
+    if (!inputMessage.trim() || !currentUser || !activeChat || sending) return;
 
+    const messageContent = inputMessage.trim();
     const messageData = {
       senderId: currentUser.id,
       receiverId: activeChat.id,
-      content: inputMessage.trim(),
+      content: messageContent,
     };
+
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
 
     try {
       setSending(true);
+
+      // Clear input immediately for better UX
+      setInputMessage("");
+
       console.log("📤 Sending message:", messageData);
 
       const res = await fetch(`${API_BASE}/api/messages`, {
@@ -166,26 +271,37 @@ export default function ChatPage() {
       }
 
       const saved = await res.json();
-      console.log("Message saved:", saved);
+      const savedId = saved._id || saved.id;
+      console.log("✅ Message saved with ID:", savedId);
 
-      // Emit to socket
-      socket?.emit("chat message", saved);
+      // Track this message ID so we don't add it again from socket
+      if (savedId) {
+        messageIdsRef.current.add(savedId);
+      }
 
-      // Add to local state immediately for better UX
+      // Create the message to add to state
       const newMessage: Message = {
-        id: saved._id || saved.id,
+        id: savedId,
         content: saved.content,
         senderId: saved.senderId,
-        receiverId: saved.receiverId || activeChat.id,
+        receiverId: activeChat.id,
         chatId: saved.chatId,
-        createdAt: saved.createdAt || new Date().toISOString(),
+        createdAt: saved.createdAt,
       };
 
-      setMessages((prev) => [...prev, newMessage]);
-      setInputMessage("");
+      // Add to messages immediately
+      setMessages((prev) => {
+        // Check if already exists (shouldn't happen, but be safe)
+        if (prev.some((m) => m.id === savedId)) {
+          console.log("⚠️ Message already in state, skipping");
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
     } catch (err) {
-      console.error("Send message error:", err);
+      console.error("❌ Send message error:", err);
       alert("Failed to send message. Please try again.");
+      setInputMessage(messageContent); // Restore message
     } finally {
       setSending(false);
     }
@@ -243,6 +359,7 @@ export default function ChatPage() {
       handleSendMessage={handleSendMessage}
       sending={sending}
       currentUser={currentUser}
+      loadingMessages={loadingMessages}
     />
   );
 }
