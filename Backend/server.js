@@ -19,7 +19,11 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
 app.use(express.json());
 app.use(
   cors({
-    origin: [CLIENT_URL, "http://localhost:3000"], // Allow both production and local
+    origin: [
+      CLIENT_URL,
+      "http://localhost:3000",
+      "https://nex-talk.vercel.app",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -28,7 +32,11 @@ app.use(
 // ===== SOCKET.IO SETUP =====
 const io = new Server(server, {
   cors: {
-    origin: [CLIENT_URL, "http://localhost:3000"], // Allow both production and local
+    origin: [
+      CLIENT_URL,
+      "http://localhost:3000",
+      "https://nex-talk.vercel.app",
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -40,7 +48,7 @@ const io = new Server(server, {
 const connectedUsers = new Map();
 
 io.on("connection", (socket) => {
-  console.log("✅ New user connected:", socket.id);
+  console.log("New user connected:", socket.id);
 
   // User joins with their userId
   socket.on("join", ({ userId }) => {
@@ -55,19 +63,15 @@ io.on("connection", (socket) => {
     for (const [userId, socketId] of connectedUsers.entries()) {
       if (socketId === socket.id) {
         connectedUsers.delete(userId);
-        console.log(`👋 User ${userId} disconnected`);
+        console.log(`User ${userId} disconnected`);
         break;
       }
     }
-    console.log("❌ Socket disconnected:", socket.id);
+    console.log("Socket disconnected:", socket.id);
   });
 });
 
 // ===== HELPER FUNCTIONS =====
-
-/**
- * Get or create a chat between two users
- */
 async function getOrCreateChat(userAId, userBId) {
   try {
     // Ensure IDs are strings
@@ -173,7 +177,7 @@ app.post("/api/auth/register", async (req, res) => {
         name: name.trim(),
         email: email.toLowerCase(),
         password: hashedPassword,
-        image: "", // ✅ Default empty image
+        image: "", // Default empty image
       },
       select: {
         id: true,

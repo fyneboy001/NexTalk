@@ -6,6 +6,7 @@ import { FaVideo, FaClock } from "react-icons/fa";
 import { MdWifiLock } from "react-icons/md";
 import React from "react";
 import Navbar from "@/components/Navbar";
+import { useRouter } from "next/navigation";
 
 export default function Home(): React.ReactElement {
   return (
@@ -18,6 +19,7 @@ export default function Home(): React.ReactElement {
 }
 
 const Hero: React.FC = () => {
+  const router = useRouter();
   return (
     <div className="flex px-12 justify-center items-center space-x-20 py-16">
       <div>
@@ -31,6 +33,7 @@ const Hero: React.FC = () => {
         </p>
 
         <Button
+          onClick={() => router.push("/signup")}
           text="Get Started"
           className="bg-gradient-to-r from-orange-500 to-orange-300 text-white hover:opacity-90 mt-10"
         />

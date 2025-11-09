@@ -90,7 +90,7 @@ export default function ChatPage() {
     if (!currentUser) return;
     if (socket?.connected) return; // Don't recreate if already connected
 
-    console.log("🔌 Initializing socket connection...");
+    console.log("Initializing socket connection...");
     const newSocket = io(SOCKET_URL, {
       transports: ["websocket"],
       reconnection: true,
@@ -165,7 +165,7 @@ export default function ChatPage() {
     const fetchContacts = async () => {
       try {
         console.log("📋 Fetching contacts...");
-        const res = await fetch(`${API_BASE}/api/users`);
+        const res = await fetch(`${API_BASE}/api/users`); // ✅ Fixed: Added opening parenthesis
 
         if (!res.ok) {
           throw new Error(`Failed to fetch contacts: ${res.statusText}`);
