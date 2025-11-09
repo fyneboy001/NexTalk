@@ -17,7 +17,12 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const res = await fetch("http://localhost:5000/api/auth/login", {
+          const baseUrl =
+            process.env.NODE_ENV === "production"
+              ? process.env.NEXT_PUBLIC_API_URL
+              : "http://localhost:5000";
+
+          const res = await fetch(`${baseUrl}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -58,7 +63,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       try {
-        console.log("🔐 SignIn callback triggered");
+        console.log("SignIn callback triggered");
         console.log("User:", user);
         console.log("Account:", account);
 
@@ -68,7 +73,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!existingUser) {
-          console.log("👤 Creating new user in database");
+          console.log("Creating new user in database");
           existingUser = await prisma.user.create({
             data: {
               name: user.name || "User",
@@ -78,7 +83,7 @@ export const authOptions: NextAuthOptions = {
             },
           });
         } else {
-          console.log("👤 User exists in database:", existingUser.id);
+          console.log("User exists in database:", existingUser.id);
 
           // Update user image if it changed (for OAuth)
           if (user.image && user.image !== existingUser.image) {
@@ -89,26 +94,26 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
-        // ✅ CRITICAL: Update user object with database ID
+        //CRITICAL: Update user object with database ID
         user.id = existingUser.id;
         user.name = existingUser.name;
         user.email = existingUser.email;
         user.image = existingUser.image || user.image;
 
-        console.log("✅ SignIn successful for user:", user.id);
+        console.log("SignIn successful for user:", user.id);
         return true;
       } catch (err) {
-        console.error("❌ signIn callback error:", err);
+        console.error("signIn callback error:", err);
         return false;
       }
     },
 
     async jwt({ token, user, trigger, session }) {
-      console.log("🎫 JWT callback triggered");
+      console.log("JWT callback triggered");
 
       // Initial sign in
       if (user) {
-        console.log("📝 Adding user to token:", user.id);
+        console.log("Adding user to token:", user.id);
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
@@ -126,7 +131,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      console.log("🎭 Session callback triggered");
+      console.log("Session callback triggered");
       console.log("Token data:", {
         id: token.id,
         email: token.email,
@@ -135,7 +140,7 @@ export const authOptions: NextAuthOptions = {
       });
 
       if (session.user && token) {
-        // ✅ CRITICAL: Ensure all user data is in session
+        //CRITICAL: Ensure all user data is in session
         session.user.id = token.id as string;
         session.user.email = token.email as string;
         session.user.name = token.name as string;

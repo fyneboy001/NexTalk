@@ -60,7 +60,7 @@ export default function ChatPage() {
   // Set current user from session
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.id) {
-      console.log("⏸️ Waiting for authentication...", {
+      console.log("Waiting for authentication...", {
         status,
         hasUser: !!session?.user,
       });
@@ -100,18 +100,18 @@ export default function ChatPage() {
     socket = newSocket;
 
     newSocket.on("connect", () => {
-      console.log("✅ Connected to socket:", newSocket.id);
+      console.log("Connected to socket:", newSocket.id);
       newSocket.emit("join", { userId: currentUser.id });
     });
 
     newSocket.on("newMessage", (msg: BackendMessage) => {
-      console.log("📨 New message received via socket:", msg);
+      console.log("New message received via socket:", msg);
 
       const messageId = msg._id || msg.id;
 
       // Skip if no ID or already have this message
       if (!messageId || messageIdsRef.current.has(messageId)) {
-        console.log("⏭️ Skipping duplicate message:", messageId);
+        console.log("Skipping duplicate message:", messageId);
         return;
       }
 
@@ -131,26 +131,26 @@ export default function ChatPage() {
       setMessages((prev) => {
         // Final check to prevent duplicates in state
         if (prev.some((m) => m.id === messageId)) {
-          console.log("⏭️ Message already in state:", messageId);
+          console.log("Message already in state:", messageId);
           return prev;
         }
-        console.log("✅ Adding new message to state:", messageId);
+        console.log("Adding new message to state:", messageId);
         return [...prev, formattedMsg];
       });
     });
 
     newSocket.on("disconnect", () => {
-      console.log("🔌 Socket disconnected");
+      console.log("Socket disconnected");
     });
 
     newSocket.on("reconnect", () => {
-      console.log("🔄 Socket reconnected");
+      console.log("Socket reconnected");
       newSocket.emit("join", { userId: currentUser.id });
     });
 
     // Cleanup only when component unmounts or user changes
     return () => {
-      console.log("🧹 Cleaning up socket connection");
+      console.log("Cleaning up socket connection");
       if (newSocket) {
         newSocket.disconnect();
         socket = null;
@@ -224,9 +224,9 @@ export default function ChatPage() {
         });
 
         setMessages(mapped);
-        console.log("✅ Messages loaded and displayed:", mapped.length);
+        console.log("Messages loaded and displayed:", mapped.length);
       } catch (err) {
-        console.error("❌ Error fetching conversation:", err);
+        console.error("Error fetching conversation:", err);
         setMessages([]); // Clear messages on error
       } finally {
         setLoadingMessages(false);
@@ -258,7 +258,7 @@ export default function ChatPage() {
       // Clear input immediately for better UX
       setInputMessage("");
 
-      console.log("📤 Sending message:", messageData);
+      console.log("Sending message:", messageData);
 
       const res = await fetch(`${API_BASE}/api/messages`, {
         method: "POST",
@@ -272,7 +272,7 @@ export default function ChatPage() {
 
       const saved = await res.json();
       const savedId = saved._id || saved.id;
-      console.log("✅ Message saved with ID:", savedId);
+      console.log("Message saved with ID:", savedId);
 
       // Track this message ID so we don't add it again from socket
       if (savedId) {
@@ -293,13 +293,13 @@ export default function ChatPage() {
       setMessages((prev) => {
         // Check if already exists (shouldn't happen, but be safe)
         if (prev.some((m) => m.id === savedId)) {
-          console.log("⚠️ Message already in state, skipping");
+          console.log("Message already in state, skipping");
           return prev;
         }
         return [...prev, newMessage];
       });
     } catch (err) {
-      console.error("❌ Send message error:", err);
+      console.error("Send message error:", err);
       alert("Failed to send message. Please try again.");
       setInputMessage(messageContent); // Restore message
     } finally {
