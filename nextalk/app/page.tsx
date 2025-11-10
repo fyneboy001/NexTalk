@@ -21,7 +21,7 @@ export default function Home(): React.ReactElement {
 const Hero: React.FC = () => {
   const router = useRouter();
   return (
-    <div className="flex px-12 justify-center items-center space-x-20 py-16">
+    <div className="lg:flex px-12 justify-center items-center space-x-20 py-16">
       <div>
         <h3 className="text-3xl font-bold leading-snug">
           Start chatting with <br /> family and friends, <br /> anytime,
@@ -59,7 +59,7 @@ const Features: React.FC = () => {
         Features for a Better Experience
       </h2>
 
-      <div className="flex justify-center space-x-7">
+      <div className="flex lg:justify-center space-x-7 flex-col lg:flex-row items-center">
         <FeatureCard
           icon={<FaVideo className="text-pink-200 text-3xl mb-4" />}
           subtitle="Video Messaging"
@@ -88,8 +88,8 @@ interface FeatureCardProps {
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ icon, subtitle, para }) => {
   return (
-    <div className="flex w-[25%] shadow-2xl py-10 px-2">
-      <div className="w-[20%]">{icon}</div>
+    <div className="flex lg:w-[32%] shadow-2xl py-10 lg:px-2 w-full justify-center space-x-4">
+      <div className="">{icon}</div>
       <div>
         <h3 className="font-bold text-xl mb-3">{subtitle}</h3>
         <p className=" whitespace-pre-line">{para}</p>

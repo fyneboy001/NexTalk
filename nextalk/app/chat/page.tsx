@@ -165,7 +165,7 @@ export default function ChatPage() {
     const fetchContacts = async () => {
       try {
         console.log("📋 Fetching contacts...");
-        const res = await fetch(`${API_BASE}/api/users`); // ✅ Fixed: Added opening parenthesis
+        const res = await fetch(`${API_BASE}/api/users`);
 
         if (!res.ok) {
           throw new Error(`Failed to fetch contacts: ${res.statusText}`);
@@ -174,9 +174,9 @@ export default function ChatPage() {
         const users: User[] = await res.json();
         const filteredContacts = users.filter((u) => u.id !== currentUser.id);
         setContacts(filteredContacts);
-        console.log("✅ Contacts loaded:", filteredContacts.length);
+        console.log("Contacts loaded:", filteredContacts.length);
       } catch (err) {
-        console.error("❌ Error fetching contacts:", err);
+        console.error("Error fetching contacts:", err);
       }
     };
 

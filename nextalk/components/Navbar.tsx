@@ -9,11 +9,11 @@ const Navbar = () => {
       <div className="flex items-center space-x-2">
         <Image
           className=""
-          src="/N-logo.png" // Path inside /public
+          src="/N-logo.png"
           alt="NexTalk Logo"
-          width={200} // Required
-          height={100} // Required
-          priority // Loads early (for logo)
+          width={200}
+          height={100}
+          priority
         />
       </div>
       <div className="flex space-x-4">

@@ -285,7 +285,7 @@ export default function UserLayout({
       </section>
 
       {/* ===== Profile Section ===== */}
-      <aside className="w-1/4 bg-white border-l border-gray-200 flex flex-col items-center p-6">
+      <aside className="w-1/4 bg-white border-l border-gray-200 hidden lg:flex flex-col items-center p-6">
         {activeChat ? (
           <>
             <Image
@@ -314,12 +314,12 @@ export default function UserLayout({
                       Online
                     </span>
                   </div>
-                  <div>
+                  {/* <div>
                     <span className="text-gray-500">User ID:</span>
                     <span className="ml-2 text-gray-700 font-mono text-xs">
                       {activeChat.id.slice(0, 8)}...
                     </span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
