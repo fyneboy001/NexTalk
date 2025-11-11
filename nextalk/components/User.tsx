@@ -1,16 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import {
-  FaPaperPlane,
-  FaPlus,
-  FaPhoneAlt,
-  FaVideo,
-  FaSignOutAlt,
-} from "react-icons/fa";
+import { FaPaperPlane, FaPlus, FaPhoneAlt, FaVideo } from "react-icons/fa";
 import { FiSearch } from "react-icons/fi";
 import React, { useState, useEffect, useRef } from "react";
-import { signOut } from "next-auth/react";
 import type { Message } from "../app/types/chat";
 
 type User = {
@@ -46,6 +39,7 @@ export default function UserLayout({
   loadingMessages = false,
 }: UserLayoutProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -60,7 +54,7 @@ export default function UserLayout({
     }
   };
 
-  // Filter contacts based on search query
+  // Filter contacts
   const filteredContacts = contacts.filter((contact) => {
     const query = searchQuery.toLowerCase();
     return (
@@ -81,9 +75,17 @@ export default function UserLayout({
   }
 
   return (
-    <div className="h-screen w-full flex bg-gradient-to-br from-[#F8F6FF] to-[#F3E8FF]">
+    <div className="h-screen w-full flex bg-gradient-to-br from-[#F8F6FF] to-[#F3E8FF] overflow-hidden">
       {/* ===== Sidebar ===== */}
-      <aside className="w-1/4 bg-gradient-to-b from-[#6D28D9] to-[#9333EA] text-white flex flex-col shadow-lg">
+      <aside
+        className={`
+          bg-gradient-to-b from-[#6D28D9] to-[#9333EA] text-white flex flex-col shadow-lg
+          transition-all duration-300
+          ${showChatOnMobile ? "hidden" : "flex"}
+          w-full sm:w-1/3 md:w-1/4
+        `}
+      >
+        {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-white/20">
           <h1 className="text-xl font-bold tracking-wide">NexTalk</h1>
           <button className="bg-white text-[#7E22CE] rounded-full p-2 hover:bg-purple-100 transition">
@@ -130,7 +132,10 @@ export default function UserLayout({
             filteredContacts.map((contact) => (
               <div
                 key={contact.id}
-                onClick={() => setActiveChat(contact)}
+                onClick={() => {
+                  setActiveChat(contact);
+                  setShowChatOnMobile(true);
+                }}
                 className={`flex items-center p-3 cursor-pointer hover:bg-white/10 transition ${
                   activeChat?.id === contact.id ? "bg-white/15" : ""
                 }`}
@@ -162,28 +167,45 @@ export default function UserLayout({
       </aside>
 
       {/* ===== Chat Section ===== */}
-      <section className="flex-1 flex flex-col border-x border-gray-200/40">
+      <section
+        className={`
+          flex flex-col border-x border-gray-200/40 transition-all duration-300
+          ${showChatOnMobile ? "flex" : "hidden"}
+          sm:hidden md:flex md:flex-1
+        `}
+      >
         <header className="flex items-center justify-between p-4 border-b bg-white/90 backdrop-blur-sm">
-          {activeChat ? (
-            <div className="flex items-center gap-3">
-              <Image
-                src={activeChat.image || "/default-avatar.png"}
-                alt={activeChat.name || "Chat user"}
-                width={45}
-                height={45}
-                className="rounded-full"
-                unoptimized
-              />
-              <div>
-                <h2 className="font-semibold text-gray-800">
-                  {activeChat.name || "Unknown User"}
-                </h2>
-                <p className="text-xs text-[#7E22CE]">Online</p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-gray-500">Select a user to start chatting</p>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Back Button (Mobile) */}
+            <button
+              onClick={() => setShowChatOnMobile(false)}
+              className="md:hidden text-[#7E22CE] text-sm font-semibold mr-2"
+            >
+              ← Back
+            </button>
+
+            {activeChat ? (
+              <>
+                <Image
+                  src={activeChat.image || "/default-avatar.png"}
+                  alt={activeChat.name || "Chat user"}
+                  width={45}
+                  height={45}
+                  className="rounded-full"
+                  unoptimized
+                />
+                <div>
+                  <h2 className="font-semibold text-gray-800">
+                    {activeChat.name || "Unknown User"}
+                  </h2>
+                  <p className="text-xs text-[#7E22CE]">Online</p>
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-500">Select a user to start chatting</p>
+            )}
+          </div>
+
           <div className="flex gap-3 text-[#7E22CE]">
             <FaPhoneAlt className="cursor-pointer hover:text-[#9333EA] transition" />
             <FaVideo className="cursor-pointer hover:text-[#9333EA] transition" />
@@ -302,24 +324,16 @@ export default function UserLayout({
             <p className="text-sm text-gray-500 break-all text-center">
               {activeChat.email || "No email"}
             </p>
-            <div className="mt-6 w-full">
-              <div className="border-t pt-4">
-                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                  User Info
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-gray-500">Status:</span>
-                    <span className="ml-2 text-green-600 font-medium">
-                      Online
-                    </span>
-                  </div>
-                  {/* <div>
-                    <span className="text-gray-500">User ID:</span>
-                    <span className="ml-2 text-gray-700 font-mono text-xs">
-                      {activeChat.id.slice(0, 8)}...
-                    </span>
-                  </div> */}
+            <div className="mt-6 w-full border-t pt-4">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                User Info
+              </h4>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Status:</span>
+                  <span className="ml-2 text-green-600 font-medium">
+                    Online
+                  </span>
                 </div>
               </div>
             </div>

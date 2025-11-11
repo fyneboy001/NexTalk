@@ -47,29 +47,32 @@ const SignIn = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 md:px-8 py-8">
-      {/* Logo Section */}
-      <div className="absolute top-6 left-6 flex items-center gap-2">
-        <Image
-          src="/N-logo.png" // <-- replace with your actual logo path in /public
-          alt="Nextalk Logo"
-          width={100}
-          height={100}
-          className="rounded-md"
-        />
-      </div>
-
       {/* Main Container */}
       <div className="w-full max-w-5xl bg-[#f9f9f9] border border-gray-200 rounded-2xl shadow-lg flex flex-col md:flex-row overflow-hidden transition-all duration-300">
         {/* LEFT SECTION - FORM */}
-        <div className="flex-1 p-8 sm:p-10 md:p-12 flex flex-col justify-center">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900 text-center md:text-left">
-            Login to Your Account
+        <div className="flex-1 p-8 sm:p-10 md:p-12 flex flex-col justify-center items-center md:items-start text-center md:text-left">
+          {/* ✅ Logo placed neatly above heading */}
+          <div className="mb-6 flex justify-center md:justify-start">
+            <Image
+              src="/N-logo.png"
+              alt="Nextalk Logo"
+              width={120}
+              height={120}
+              className="rounded-md"
+            />
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-gray-900">
+            Sign in to Your Account
           </h2>
-          <p className="text-gray-500 text-sm sm:text-base mb-8 text-center md:text-left">
+          <p className="text-gray-500 text-sm sm:text-base mb-8">
             Connect with thousands of users and chat seamlessly in real time.
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            className="w-full max-w-sm sm:max-w-md space-y-5 sm:space-y-6"
+          >
             {error && (
               <p className="text-center text-sm text-red-500 font-medium">
                 {error}
@@ -115,7 +118,7 @@ const SignIn = () => {
           </form>
 
           {/* Forgot Password */}
-          <div className="text-center mt-4">
+          <div className="text-center md:text-left mt-4">
             <a
               href="#"
               className="text-sm text-[#FF7A00] hover:underline transition"
@@ -126,11 +129,11 @@ const SignIn = () => {
         </div>
 
         {/* RIGHT SECTION - OAUTH OPTIONS */}
-        <div className="flex-1 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-8 sm:p-10 flex flex-col justify-center space-y-4 sm:space-y-5">
+        <div className="flex-1 bg-white border-t md:border-t-0 md:border-l border-gray-200 p-8 sm:p-10 flex flex-col justify-center space-y-4 sm:space-y-5 items-center">
           <button
             type="button"
             onClick={() => signIn("google", { callbackUrl: "/chat" })}
-            className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 hover:bg-gray-100 transition"
+            className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 w-full max-w-sm hover:bg-gray-100 transition"
           >
             <FcGoogle size={22} />
             <span className="font-medium text-gray-700">
@@ -141,7 +144,7 @@ const SignIn = () => {
           <button
             type="button"
             onClick={() => signIn("github", { callbackUrl: "/chat" })}
-            className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 hover:bg-gray-100 transition"
+            className="flex items-center justify-center gap-3 border border-gray-300 rounded-lg py-3 w-full max-w-sm hover:bg-gray-100 transition"
           >
             <FaGithub size={22} className="text-gray-900" />
             <span className="font-medium text-gray-700">
