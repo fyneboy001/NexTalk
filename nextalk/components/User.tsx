@@ -82,8 +82,8 @@ export default function UserLayout({
         className={`
           bg-gradient-to-b from-[#6D28D9] to-[#9333EA] text-white flex flex-col shadow-lg
           transition-all duration-300
-          ${showChatOnMobile ? "hidden" : "flex"}
           w-full sm:w-1/3 md:w-1/4
+          ${showChatOnMobile ? "hidden sm:flex" : "flex"}
         `}
       >
         {/* Header */}
@@ -168,9 +168,8 @@ export default function UserLayout({
       {/* ===== Chat Section ===== */}
       <section
         className={`
-          flex flex-col border-x border-gray-200/40 transition-all duration-300
-          ${showChatOnMobile ? "flex w-full" : "hidden"}
-          sm:hidden md:flex md:flex-1
+          flex flex-col border-x border-gray-200/40 transition-all duration-300 flex-1
+          ${showChatOnMobile ? "flex" : "hidden sm:flex"}
         `}
       >
         <header className="flex items-center justify-between p-4 border-b bg-white/90 backdrop-blur-sm">
@@ -178,7 +177,7 @@ export default function UserLayout({
             {/* Back Button (Mobile) */}
             <button
               onClick={() => setShowChatOnMobile(false)}
-              className="md:hidden text-[#7E22CE] text-sm font-semibold"
+              className="sm:hidden text-[#7E22CE] text-sm font-semibold"
             >
               ←
             </button>
