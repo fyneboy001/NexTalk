@@ -292,7 +292,7 @@ export default function SignUpPage() {
           {/* Divider */}
           <div className="flex items-center justify-center space-x-2 my-5">
             <div className="w-1/4 h-px bg-gray-300"></div>
-            <span className="text-sm text-gray-500">or sign up with</span>
+            <span className="text-sm text-gray-500">or</span>
             <div className="w-1/4 h-px bg-gray-300"></div>
           </div>
 

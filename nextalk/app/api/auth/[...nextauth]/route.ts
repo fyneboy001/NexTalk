@@ -13,10 +13,13 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Please provide email and password");
+        }
 
         try {
-          const baseUrl = "http://localhost:5000";
+          const baseUrl =
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
           const res = await fetch(`${baseUrl}/api/auth/login`, {
             method: "POST",
@@ -27,20 +30,24 @@ export const authOptions: NextAuthOptions = {
             }),
           });
 
-          if (!res.ok) return null;
-
           const data = await res.json();
+
+          if (!res.ok) {
+            // Throw the error message from backend
+            throw new Error(data.message || "Invalid credentials");
+          }
 
           // Return user object with all required fields
           return {
-            id: String(data?.user?.id),
-            name: data?.user?.name || null,
-            email: data?.user?.email || null,
-            image: data?.user?.image || null,
+            id: String(data.user.id),
+            name: data.user.name,
+            email: data.user.email,
+            image: data.user.image || null,
           };
         } catch (error) {
           console.error("NextAuth authorize error:", error);
-          return null;
+          // Re-throw to show error to user
+          throw error;
         }
       },
     }),

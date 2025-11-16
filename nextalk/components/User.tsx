@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { FaPaperPlane, FaPlus, FaPhoneAlt, FaVideo } from "react-icons/fa";
+import { FaPaperPlane, FaPhoneAlt, FaVideo } from "react-icons/fa";
 import { FiSearch } from "react-icons/fi";
 import React, { useState, useEffect, useRef } from "react";
 import type { Message } from "../app/types/chat";
+import Signout from "./Signout";
 
 type User = {
   id: string;
@@ -88,9 +89,7 @@ export default function UserLayout({
         {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-white/20">
           <h1 className="text-xl font-bold tracking-wide">NexTalk</h1>
-          <button className="bg-white text-[#7E22CE] rounded-full p-2 hover:bg-purple-100 transition">
-            <FaPlus />
-          </button>
+          <Signout />
         </div>
 
         {/* Signed-in User */}
@@ -170,7 +169,7 @@ export default function UserLayout({
       <section
         className={`
           flex flex-col border-x border-gray-200/40 transition-all duration-300
-          ${showChatOnMobile ? "flex" : "hidden"}
+          ${showChatOnMobile ? "flex w-full" : "hidden"}
           sm:hidden md:flex md:flex-1
         `}
       >
@@ -179,9 +178,9 @@ export default function UserLayout({
             {/* Back Button (Mobile) */}
             <button
               onClick={() => setShowChatOnMobile(false)}
-              className="md:hidden text-[#7E22CE] text-sm font-semibold mr-2"
+              className="md:hidden text-[#7E22CE] text-sm font-semibold"
             >
-              ← Back
+              ←
             </button>
 
             {activeChat ? (

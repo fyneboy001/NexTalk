@@ -14,7 +14,7 @@ const Navbar = () => {
 
   return (
     <nav className="w-full shadow-sm bg-white fixed top-0 left-0 z-50">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 sm:px-10 py-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 sm:px-10 py-2">
         {/* Logo */}
         <div
           onClick={() => router.push("/")}
@@ -30,13 +30,13 @@ const Navbar = () => {
         </div>
 
         {/* Desktop Menu */}
-        <div className="hidden lg:flex items-center space-x-8">
+        <div className="hidden lg:flex items-center space-x-8 w-[60%]">
           <NavLink text="Home" onClick={() => router.push("/")} />
           <NavLink text="About" onClick={() => router.push("/about")} />
           <NavLink text="FAQ" onClick={() => router.push("/faq")} />
           <NavLink text="Contact" onClick={() => router.push("/contact")} />
 
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 ml-auto">
             <Button
               onClick={() => router.push("/signin")}
               text="Sign In"
