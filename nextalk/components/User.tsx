@@ -287,7 +287,7 @@ export default function UserLayout({
               onKeyDown={onKeyDown}
               placeholder="Type your message..."
               disabled={sending || loadingMessages}
-              className="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-[#7E22CE] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="flex-1 text-purple-900 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-[#8244b7] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleSendMessage}

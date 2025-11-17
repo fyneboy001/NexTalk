@@ -310,7 +310,7 @@ const SignIn = () => {
           >
             <FcGoogle size={22} />
             <span className="font-medium text-gray-700">
-              Sign in with Google
+              Continue with Google
             </span>
           </button>
 
@@ -321,7 +321,7 @@ const SignIn = () => {
           >
             <FaGithub size={22} className="text-gray-900" />
             <span className="font-medium text-gray-700">
-              Sign in with GitHub
+              Continue with GitHub
             </span>
           </button>
 
